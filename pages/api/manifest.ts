@@ -1,15 +1,11 @@
 import FormData from 'form-data';
 import fs from 'fs/promises';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { serializeDictionary } from 'structured-headers';
 
 import {
   getAssetMetadataAsync,
   getMetadataAsync,
   convertSHA256HashToUUID,
-  convertToDictionaryItemsRepresentation,
-  signRSASHA256,
-  getPrivateKeyAsync,
   getExpoConfigAsync,
   getLatestUpdateBundlePathForRuntimeVersionAsync,
   createRollBackDirectiveAsync,
@@ -117,8 +113,6 @@ async function putUpdateInResponseAsync(
     runtimeVersion,
   });
 
-  // NoUpdateAvailable directive only supported on protocol version 1
-  // for protocol version 0, serve most recent update as normal
   if (currentUpdateId === convertSHA256HashToUUID(id) && protocolVersion === 1) {
     throw new NoUpdateAvailableError();
   }
@@ -158,26 +152,6 @@ async function putUpdateInResponseAsync(
     },
   };
 
-  let signature = null;
-  const expectSignatureHeader = req.headers['expo-expect-signature'];
-  if (expectSignatureHeader) {
-    const privateKey = await getPrivateKeyAsync();
-    if (!privateKey) {
-      res.statusCode = 400;
-      res.json({
-        error: 'Code signing requested but no key supplied when starting server.',
-      });
-      return;
-    }
-    const manifestString = JSON.stringify(manifest);
-    const hashSignature = signRSASHA256(manifestString, privateKey);
-    const dictionary = convertToDictionaryItemsRepresentation({
-      sig: hashSignature,
-      keyid: 'main',
-    });
-    signature = serializeDictionary(dictionary);
-  }
-
   const assetRequestHeaders: { [key: string]: object } = {};
   [...manifest.assets, manifest.launchAsset].forEach((asset) => {
     assetRequestHeaders[asset.key] = {
@@ -190,7 +164,6 @@ async function putUpdateInResponseAsync(
     contentType: 'application/json',
     header: {
       'content-type': 'application/json; charset=utf-8',
-      ...(signature ? { 'expo-signature': signature } : {}),
     },
   });
   form.append('extensions', JSON.stringify({ assetRequestHeaders }), {
@@ -228,32 +201,11 @@ async function putRollBackInResponseAsync(
 
   const directive = await createRollBackDirectiveAsync(updateBundlePath);
 
-  let signature = null;
-  const expectSignatureHeader = req.headers['expo-expect-signature'];
-  if (expectSignatureHeader) {
-    const privateKey = await getPrivateKeyAsync();
-    if (!privateKey) {
-      res.statusCode = 400;
-      res.json({
-        error: 'Code signing requested but no key supplied when starting server.',
-      });
-      return;
-    }
-    const directiveString = JSON.stringify(directive);
-    const hashSignature = signRSASHA256(directiveString, privateKey);
-    const dictionary = convertToDictionaryItemsRepresentation({
-      sig: hashSignature,
-      keyid: 'main',
-    });
-    signature = serializeDictionary(dictionary);
-  }
-
   const form = new FormData();
   form.append('directive', JSON.stringify(directive), {
     contentType: 'application/json',
     header: {
       'content-type': 'application/json; charset=utf-8',
-      ...(signature ? { 'expo-signature': signature } : {}),
     },
   });
 
@@ -277,32 +229,11 @@ async function putNoUpdateAvailableInResponseAsync(
 
   const directive = await createNoUpdateAvailableDirectiveAsync();
 
-  let signature = null;
-  const expectSignatureHeader = req.headers['expo-expect-signature'];
-  if (expectSignatureHeader) {
-    const privateKey = await getPrivateKeyAsync();
-    if (!privateKey) {
-      res.statusCode = 400;
-      res.json({
-        error: 'Code signing requested but no key supplied when starting server.',
-      });
-      return;
-    }
-    const directiveString = JSON.stringify(directive);
-    const hashSignature = signRSASHA256(directiveString, privateKey);
-    const dictionary = convertToDictionaryItemsRepresentation({
-      sig: hashSignature,
-      keyid: 'main',
-    });
-    signature = serializeDictionary(dictionary);
-  }
-
   const form = new FormData();
   form.append('directive', JSON.stringify(directive), {
     contentType: 'application/json',
     header: {
       'content-type': 'application/json; charset=utf-8',
-      ...(signature ? { 'expo-signature': signature } : {}),
     },
   });
 

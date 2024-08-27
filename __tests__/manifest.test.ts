@@ -91,7 +91,7 @@ describe.each([['0'], ['1']])('protocol version %p', (protocolVersion) => {
       },
     ],
   ])('returns latest %p manifest', async (platform, launchAssetExpectation) => {
-    process.env.PRIVATE_KEY_PATH = 'updates/test/1/privatekey.pem';
+    
 
     const firstAssetExpectation = {
       hash: 'JCcs2u_4LMX6zazNmCpvBbYMRQRwS7-UwZpjiGWYgLs',
@@ -140,7 +140,7 @@ describe.each([['0'], ['1']])('protocol version %p', (protocolVersion) => {
 });
 
 test.each([['ios'], ['android']])('returns rollback %p', async (platform) => {
-  process.env.PRIVATE_KEY_PATH = 'updates/test/1/privatekey.pem';
+  
 
   const { req, res } = createMocks({
     method: 'GET',
@@ -169,7 +169,7 @@ test.each([['ios'], ['android']])('returns rollback %p', async (platform) => {
 });
 
 test.each([['ios'], ['android']])('throws for rollback %p for protocol 0', async (platform) => {
-  process.env.PRIVATE_KEY_PATH = 'updates/test/1/privatekey.pem';
+  
 
   const { req, res } = createMocks({
     method: 'GET',
